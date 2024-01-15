@@ -1,5 +1,6 @@
 import pygame
 import sys
+import random
 
 pygame.init()
 
@@ -14,7 +15,7 @@ white = (255, 255, 255)
 # Paddle
 paddle_width, paddle_height = 100, 10
 paddle_x, paddle_y = (width - paddle_width) // 2, height - 20
-paddle_speed = 5
+paddle_speed = 6
 
 # Ball
 ball_radius = 10
@@ -24,11 +25,20 @@ ball_speed_x, ball_speed_y = 0, 0  # Initialize ball speed
 # Counter
 hit_counter = 0
 
+# Blocks
+block_size = 5
+blocks = []
+
 # Game state
 game_active = False
 
 # Main game loop
 clock = pygame.time.Clock()
+
+def generate_block():
+    block_x = random.randint(0, width - block_size)
+    block_y = random.randint(0, height - block_size)
+    return pygame.Rect(block_x, block_y, block_size, block_size)
 
 while True:
     for event in pygame.event.get():
@@ -39,6 +49,7 @@ while True:
             if event.key == pygame.K_SPACE:
                 # Start/restart the game on space bar press
                 game_active = True
+                ball_x, ball_y = width // 20 - 20, height // 2  # Reset ball position
                 ball_speed_x, ball_speed_y = 5, 5  # Set initial ball speed
 
     if game_active:
@@ -62,9 +73,10 @@ while True:
         # Reset game if the ball misses the paddle
         if ball_y >= height:
             game_active = False
-            ball_x, ball_y = width // 2 - 20, height // 2  # Start slightly to the left
+            ball_x, ball_y = width // 20 - 20, height // 2  # Reset ball position
             ball_speed_x, ball_speed_y = 0, 0
             hit_counter = 0
+            blocks = []  # Clear blocks on game over
 
         # Check collision with paddle
         if (
@@ -74,6 +86,9 @@ while True:
         ):
             hit_counter += 1
 
+            # Generate a new block
+            blocks.append(generate_block())
+
             # Increase ball speed slightly on each hit
             ball_speed_y = -ball_speed_y
             if ball_speed_x < 0:
@@ -81,11 +96,27 @@ while True:
             else:
                 ball_speed_x += 0.5
 
+        # Check if the ball hits a block
+        hit_block = None
+        for block in blocks:
+            if block.colliderect((ball_x - ball_radius, ball_y - ball_radius, 2 * ball_radius, 2 * ball_radius)):
+                hit_block = block
+                break
+
+        if hit_block:
+            # Bounce off the block
+            ball_speed_y = -ball_speed_y
+            blocks.remove(hit_block)
+
         # Draw everything
         screen.fill(white)  # Set background color to white
 
         pygame.draw.rect(screen, black, (paddle_x, paddle_y, paddle_width, paddle_height))
         pygame.draw.circle(screen, black, (int(ball_x), int(ball_y)), ball_radius)
+
+        # Draw blocks
+        for block in blocks:
+            pygame.draw.rect(screen, black, block)
 
         # Display hit counter
         font = pygame.font.Font(None, 36)
